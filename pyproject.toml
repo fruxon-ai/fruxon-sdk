@@ -28,9 +28,9 @@ test = [
 ]
 
 [project.urls]
-bugs = "https://github.com/HagaiCo/fruxon/issues"
-changelog = "https://github.com/HagaiCo/fruxon/blob/master/changelog.md"
-homepage = "https://github.com/HagaiCo/fruxon"
+bugs = "https://github.com/fruxon-ai/fruxon-sdk/issues"
+changelog = "https://github.com/fruxon-ai/fruxon-sdk/blob/master/changelog.md"
+homepage = "https://github.com/fruxon-ai/fruxon-sdk"
 
 [project.scripts]
 fruxon = "fruxon.cli:app"

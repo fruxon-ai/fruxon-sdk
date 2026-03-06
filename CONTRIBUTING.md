@@ -8,7 +8,7 @@ You can contribute in many ways:
 
 ### Report Bugs
 
-Report bugs at https://github.com/HagaiCo/fruxon/issues.
+Report bugs at https://github.com/fruxon-ai/fruxon-sdk/issues.
 
 If you are reporting a bug, please include:
 
@@ -30,7 +30,7 @@ fruxon could always use more documentation, whether as part of the official docs
 
 ### Submit Feedback
 
-The best way to send feedback is to file an issue at https://github.com/HagaiCo/fruxon/issues.
+The best way to send feedback is to file an issue at https://github.com/fruxon-ai/fruxon-sdk/issues.
 
 If you are proposing a feature:
 
@@ -42,19 +42,18 @@ If you are proposing a feature:
 
 Ready to contribute? Here's how to set up `fruxon` for local development.
 
-1. Fork the `fruxon` repo on GitHub.
+1. Fork the `fruxon-sdk` repo on GitHub.
 2. Clone your fork locally:
 
    ```sh
    git clone git@github.com:your_name_here/fruxon-sdk.git
    ```
 
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development:
+3. Install dependencies using [uv](https://docs.astral.sh/uv/):
 
    ```sh
-   mkvirtualenv fruxon-sdk
    cd fruxon-sdk/
-   python setup.py develop
+   uv sync --all-extras
    ```
 
 4. Create a branch for local development:
@@ -65,16 +64,18 @@ Ready to contribute? Here's how to set up `fruxon` for local development.
 
    Now you can make your changes locally.
 
-5. When you're done making changes, check that your changes pass flake8 and the tests, including testing other Python versions with tox:
+5. When you're done making changes, check that your changes pass linting and tests:
 
    ```sh
-   make lint
-   make test
-   # Or
-   make test-all
+   just qa
    ```
 
-   To get flake8 and tox, just pip install them into your virtualenv.
+   Or run individually:
+
+   ```sh
+   just lint    # ruff format + lint checks
+   just test    # pytest
+   ```
 
 6. Commit your changes and push your branch to GitHub:
 
@@ -92,14 +93,14 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring, and add the feature to the list in README.md.
-3. The pull request should work for Python 3.12 and 3.13. Tests run in GitHub Actions on every pull request to the main branch, make sure that the tests pass for all supported Python versions.
+3. The pull request should work for Python 3.10 through 3.13. Tests run in GitHub Actions on every pull request to the main branch, make sure that the tests pass for all supported Python versions.
 
 ## Tips
 
 To run a subset of tests:
 
 ```sh
-pytest tests.test_fruxon
+uv run pytest tests/test_export.py
 ```
 
 ## Deploying
@@ -107,12 +108,11 @@ pytest tests.test_fruxon
 A reminder for the maintainers on how to deploy. Make sure all your changes are committed (including an entry in HISTORY.md). Then run:
 
 ```sh
-bump2version patch # possible: major / minor / patch
+just version patch  # possible: major / minor / patch
+just tag
 git push
 git push --tags
 ```
-
-You can set up a [GitHub Actions workflow](https://docs.github.com/en/actions/use-cases-and-examples/building-and-testing/building-and-testing-python#publishing-to-pypi) to automatically deploy your package to PyPI when you push a new tag.
 
 ## Code of Conduct
 
