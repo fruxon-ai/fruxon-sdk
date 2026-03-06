@@ -105,14 +105,13 @@ uv run pytest tests/test_export.py
 
 ## Deploying
 
-A reminder for the maintainers on how to deploy. Make sure all your changes are committed (including an entry in HISTORY.md). Then run:
+A reminder for the maintainers on how to deploy. Make sure all your changes are committed on the `develop` branch (including a version bump in `pyproject.toml` and an entry in HISTORY.md). Then run:
 
 ```sh
-just version patch  # possible: major / minor / patch
-just tag
-git push
-git push --tags
+just release
 ```
+
+This will merge `develop` into `main`, tag the release, push, and trigger the PyPI publish workflow automatically.
 
 ## Code of Conduct
 

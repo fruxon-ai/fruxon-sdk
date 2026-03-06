@@ -36,7 +36,7 @@ test = [
 
 [project.urls]
 bugs = "https://github.com/fruxon-ai/fruxon-sdk/issues"
-changelog = "https://github.com/fruxon-ai/fruxon-sdk/blob/master/changelog.md"
+changelog = "https://github.com/fruxon-ai/fruxon-sdk/blob/main/HISTORY.md"
 homepage = "https://github.com/fruxon-ai/fruxon-sdk"
 
 [project.scripts]

@@ -47,17 +47,35 @@ VERSION := `grep -m1 '^version' pyproject.toml | sed -E 's/version = "(.*)"/\1/'
 version:
     @echo "Current version is {{VERSION}}"
 
-# Tag the current version in git and put to github
-tag:
-    echo "Tagging version v{{VERSION}}"
-    git tag -a v{{VERSION}} -m "Creating version v{{VERSION}}"
+# Release: merge develop into main, tag, and push. Triggers PyPI publish.
+release:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Releasing v{{VERSION}}..."
+    # Ensure we're on develop and it's clean
+    BRANCH=$(git branch --show-current)
+    if [ "$BRANCH" != "develop" ]; then
+        echo "Error: must be on develop branch (currently on $BRANCH)"
+        exit 1
+    fi
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "Error: working directory is not clean"
+        exit 1
+    fi
+    # Merge develop into main
+    git checkout main
+    git pull origin main
+    git merge develop
+    git push origin main
+    # Tag and push
+    git tag -a v{{VERSION}} -m "Release v{{VERSION}}"
     git push origin v{{VERSION}}
+    # Go back to develop
+    git checkout develop
+    echo "Released v{{VERSION}}! PyPI publish will run automatically."
 
 # remove all build, test, coverage and Python artifacts
-clean: 
-	clean-build
-	clean-pyc
-	clean-test
+clean: clean-build clean-pyc clean-test
 
 # remove build artifacts
 clean-build:
