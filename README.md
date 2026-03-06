@@ -22,20 +22,23 @@ Export a multi-file Python agent project into a single file for importing into F
 Works with any Python framework: LangChain, LangGraph, CrewAI, Google ADK, AutoGen, and more.
 
 ```bash
-# Print consolidated output to stdout
-fruxon export graph.py
+# Auto-detect agent and copy to clipboard
+fruxon export --copy
 
-# Copy to clipboard
-fruxon export graph.py --copy
+# Auto-detect and print to stdout
+fruxon export
 
 # Write to file
-fruxon export my_agent/main.py -o export.py
+fruxon export -o export.py
+
+# Explicit entry point (if auto-detect picks the wrong file)
+fruxon export graph.py --copy
 ```
 
 **How it works:**
-1. Parses the entry point file using Python's AST
-2. Traces all local imports (skips third-party packages like `langchain`, `crewai`, etc.)
-3. Recursively collects all local dependency files
+1. Scans your project for agent framework imports (LangGraph, CrewAI, etc.)
+2. Auto-detects the entry point — if multiple agents exist, prompts you to choose
+3. Traces all local imports using Python's AST (skips third-party packages)
 4. Outputs a single consolidated file with all local code and source markers
 
 ## Credits
