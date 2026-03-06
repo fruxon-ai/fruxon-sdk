@@ -5,11 +5,17 @@ import textwrap
 import pytest
 
 from fruxon.export import (
+    MultipleAgentsError,
     build_export,
     collect_files,
+    export_agent,
     extract_imports,
+    find_agent_entry_points,
     find_project_root,
+    get_all_imports,
+    has_framework_import,
     resolve_import,
+    scan_py_files,
 )
 
 
@@ -203,3 +209,148 @@ class TestBuildExport:
         result = build_export(entry, tmp_path)
         assert "print('agent')" in result
         assert "Fruxon Export" in result
+
+
+class TestScanPyFiles:
+    def test_finds_py_files(self, tmp_project):
+        files = scan_py_files(tmp_project)
+        filenames = {f.name for f in files}
+        assert "graph.py" in filenames
+        assert "tools.py" in filenames
+        assert "researcher.py" in filenames
+        assert "helpers.py" in filenames
+
+    def test_skips_init_files(self, tmp_project):
+        files = scan_py_files(tmp_project)
+        filenames = {f.name for f in files}
+        assert "__init__.py" not in filenames
+
+    def test_skips_test_dirs(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent.py").write_text("x = 1")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_agent.py").write_text("x = 1")
+        files = scan_py_files(tmp_path)
+        filenames = {f.name for f in files}
+        assert "agent.py" in filenames
+        assert "test_agent.py" not in filenames
+
+    def test_skips_venv(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent.py").write_text("x = 1")
+        (tmp_path / ".venv").mkdir()
+        (tmp_path / ".venv" / "lib.py").write_text("x = 1")
+        files = scan_py_files(tmp_path)
+        filenames = {f.name for f in files}
+        assert "agent.py" in filenames
+        assert "lib.py" not in filenames
+
+
+class TestGetAllImports:
+    def test_extracts_imports(self):
+        source = "import os\nfrom pathlib import Path\nfrom langgraph.graph import StateGraph"
+        modules = get_all_imports(source)
+        assert "os" in modules
+        assert "pathlib" in modules
+        assert "langgraph.graph" in modules
+
+    def test_handles_syntax_error(self):
+        assert get_all_imports("def broken(") == []
+
+
+class TestHasFrameworkImport:
+    def test_detects_langgraph(self):
+        assert has_framework_import("from langgraph.graph import StateGraph") == "langgraph"
+
+    def test_detects_langchain(self):
+        assert has_framework_import("from langchain_openai import ChatOpenAI") == "langchain_openai"
+
+    def test_detects_crewai(self):
+        assert has_framework_import("from crewai import Crew, Agent") == "crewai"
+
+    def test_detects_google_adk(self):
+        assert has_framework_import("from google.adk import Agent") == "google.adk"
+
+    def test_returns_none_for_no_framework(self):
+        assert has_framework_import("import os\nimport json") is None
+
+    def test_returns_none_for_empty(self):
+        assert has_framework_import("") is None
+
+
+class TestFindAgentEntryPoints:
+    def test_finds_single_entry_point(self, tmp_project):
+        """graph.py imports langgraph, tools.py does not — graph.py is the entry point."""
+        entry_points = find_agent_entry_points(tmp_project)
+        assert len(entry_points) == 1
+        assert entry_points[0][0].name == "graph.py"
+        assert entry_points[0][1] == "langgraph"
+
+    def test_finds_no_entry_points_in_empty_project(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "utils.py").write_text("import os\ndef helper(): pass")
+        entry_points = find_agent_entry_points(tmp_path)
+        assert entry_points == []
+
+    def test_finds_multiple_entry_points(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent_a.py").write_text("from langgraph.graph import StateGraph\ngraph_a = StateGraph()")
+        (tmp_path / "agent_b.py").write_text("from crewai import Crew\ncrew = Crew()")
+        entry_points = find_agent_entry_points(tmp_path)
+        assert len(entry_points) == 2
+        names = {ep[0].name for ep in entry_points}
+        assert "agent_a.py" in names
+        assert "agent_b.py" in names
+
+    def test_framework_file_imported_by_another_is_not_entry(self, tmp_path):
+        """If agent.py imports tools.py and both use langchain, only agent.py is entry."""
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent.py").write_text(
+            "from langchain_openai import ChatOpenAI\nfrom tools import my_tool\nllm = ChatOpenAI()"
+        )
+        (tmp_path / "tools.py").write_text(
+            "from langchain_community.tools import TavilySearch\nmy_tool = TavilySearch()"
+        )
+        entry_points = find_agent_entry_points(tmp_path)
+        assert len(entry_points) == 1
+        assert entry_points[0][0].name == "agent.py"
+
+    def test_excludes_test_directory(self, tmp_path):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent.py").write_text("from langgraph.graph import StateGraph")
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_agent.py").write_text("from langgraph.graph import StateGraph")
+        entry_points = find_agent_entry_points(tmp_path)
+        assert len(entry_points) == 1
+        assert entry_points[0][0].name == "agent.py"
+
+
+class TestExportAgentAutoDetect:
+    def test_auto_detect_single_agent(self, tmp_project, monkeypatch):
+        """Auto-detect should find and export the langgraph agent."""
+        monkeypatch.chdir(tmp_project)
+        result = export_agent()
+        assert "Fruxon Export" in result
+        assert "StateGraph" in result
+        assert "search_tool" in result
+
+    def test_auto_detect_no_agent_raises(self, tmp_path, monkeypatch):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "utils.py").write_text("import os")
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(SystemExit):
+            export_agent()
+
+    def test_auto_detect_multiple_agents_raises(self, tmp_path, monkeypatch):
+        (tmp_path / "pyproject.toml").write_text("")
+        (tmp_path / "agent_a.py").write_text("from langgraph.graph import StateGraph")
+        (tmp_path / "agent_b.py").write_text("from crewai import Crew")
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(MultipleAgentsError) as exc_info:
+            export_agent()
+        assert len(exc_info.value.entry_points) == 2
+
+    def test_explicit_entry_still_works(self, tmp_project):
+        result = export_agent(str(tmp_project / "graph.py"))
+        assert "Fruxon Export" in result
+        assert "StateGraph" in result
