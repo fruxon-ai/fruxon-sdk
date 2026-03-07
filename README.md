@@ -15,6 +15,38 @@ pip install fruxon
 
 ## Features
 
+### Python Client — Execute agents via API
+
+```python
+from fruxon import FruxonClient
+
+client = FruxonClient(api_key="frx_...", tenant="acme-corp")
+
+result = client.execute("support-agent", parameters={"question": "How do I reset my password?"})
+print(result.response)
+print(f"{result.trace.duration}ms | ${result.trace.total_cost:.4f}")
+
+# Multi-turn conversation
+result2 = client.execute("support-agent", parameters={"question": "Tell me more"}, session_id=result.session_id)
+```
+
+### `fruxon run` — Execute agents from the CLI
+
+```bash
+# Basic execution
+fruxon run my-agent -t acme-corp -k frx_...
+
+# With parameters
+fruxon run my-agent -t acme-corp -p question="Hello" -p lang=en
+
+# Full JSON output (for scripting)
+fruxon run my-agent -t acme-corp --json
+
+# Use environment variable for API key
+export FRUXON_API_KEY=frx_...
+fruxon run my-agent -t acme-corp
+```
+
 ### `fruxon export` — Consolidate multi-file agents
 
 Export a multi-file Python agent project into a single file for importing into Fruxon.
@@ -41,6 +73,3 @@ fruxon export graph.py --copy
 3. Traces all local imports using Python's AST (skips third-party packages)
 4. Outputs a single consolidated file with all local code and source markers
 
-## Credits
-
-Built by [Fruxon](https://fruxon.com).
