@@ -9,6 +9,8 @@ import ast
 import sys
 from pathlib import Path
 
+from fruxon.exceptions import MultipleAgentsError as MultipleAgentsError
+
 # Known agent framework module prefixes. A file that imports any of these
 # is considered an agent-related file.
 AGENT_FRAMEWORKS = [
@@ -327,11 +329,3 @@ def export_agent(entry_path: str | None = None, output_path: str | None = None) 
         print(f"Exported to {out}", file=sys.stderr)
 
     return result
-
-
-class MultipleAgentsError(Exception):
-    """Raised when multiple agent entry points are detected."""
-
-    def __init__(self, entry_points: list[tuple[Path, str]]):
-        self.entry_points = entry_points
-        super().__init__(f"Multiple agents detected: {len(entry_points)} entry points found")
