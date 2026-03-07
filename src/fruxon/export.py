@@ -8,8 +8,12 @@ Supports auto-detection of agent entry points by scanning for framework imports.
 import ast
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fruxon.exceptions import MultipleAgentsError as MultipleAgentsError
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 # Known agent framework module prefixes. A file that imports any of these
 # is considered an agent-related file.
@@ -277,21 +281,38 @@ def find_agent_entry_points(project_root: Path) -> list[tuple[Path, str]]:
     return entry_points
 
 
-def export_agent(entry_path: str | None = None, output_path: str | None = None) -> str:
+def export_agent(
+    entry_path: str | None = None,
+    output_path: str | None = None,
+    console: "Console | None" = None,
+) -> str:
     """Main export function. Returns the consolidated source and optionally writes to file.
 
     If entry_path is None, auto-detects the agent entry point by scanning
     for framework imports. Raises SystemExit on errors.
     """
+
+    def _msg(text: str) -> None:
+        if console:
+            console.print(text, highlight=False)
+        else:
+            print(text, file=sys.stderr)
+
+    def _err(text: str) -> None:
+        if console:
+            console.print(f"[bold red]Error:[/bold red] {text}")
+        else:
+            print(f"Error: {text}", file=sys.stderr)
+
     if entry_path:
         entry_file = Path(entry_path).resolve()
 
         if not entry_file.exists():
-            print(f"Error: File not found: {entry_file}", file=sys.stderr)
+            _err(f"File not found: {entry_file}")
             raise SystemExit(1)
 
         if not entry_file.suffix == ".py":
-            print(f"Error: Entry point must be a .py file, got: {entry_file.suffix}", file=sys.stderr)
+            _err(f"Entry point must be a .py file, got: {entry_file.suffix}")
             raise SystemExit(1)
 
         project_root = find_project_root(entry_file)
@@ -301,31 +322,32 @@ def export_agent(entry_path: str | None = None, output_path: str | None = None) 
         entry_points = find_agent_entry_points(project_root)
 
         if not entry_points:
-            print(
-                "Error: No agent framework detected. "
+            _err(
+                "No agent framework detected. "
                 "Make sure you're in a directory with Python agent files, "
-                "or specify the entry point: fruxon export <file.py>",
-                file=sys.stderr,
+                "or specify the entry point: [bold]fruxon export <file.py>[/bold]"
             )
             raise SystemExit(1)
 
         if len(entry_points) == 1:
             entry_file = entry_points[0][0]
             framework = entry_points[0][1]
-            print(f"Detected {framework} agent in {entry_file.relative_to(project_root)}", file=sys.stderr)
+            relative = entry_file.relative_to(project_root)
+            _msg(f"[green]>[/green] Detected [bold]{framework}[/bold] agent in [cyan]{relative}[/cyan]")
         else:
             # Multiple entry points found — let caller handle selection
-            print("Multiple agents detected:", file=sys.stderr)
+            _msg("[yellow]Multiple agents detected:[/yellow]")
             for i, (fp, fw) in enumerate(entry_points, 1):
                 relative = fp.relative_to(project_root) if fp.is_relative_to(project_root) else fp
-                print(f"  {i}. {relative} ({fw})", file=sys.stderr)
+                _msg(f"  [bold]{i}.[/bold] {relative} [dim]({fw})[/dim]")
             raise MultipleAgentsError(entry_points)
 
     result = build_export(entry_file, project_root)
+    file_count = len(collect_files(entry_file, project_root))
 
     if output_path:
         out = Path(output_path)
         out.write_text(result, encoding="utf-8")
-        print(f"Exported to {out}", file=sys.stderr)
+        _msg(f"[green]>[/green] Exported {file_count} file(s) to [cyan]{out}[/cyan]")
 
     return result
