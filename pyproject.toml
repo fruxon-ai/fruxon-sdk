@@ -1,6 +1,6 @@
 [project]
 name = "fruxon"
-version = "0.3.0"
+version = "0.3.1"
 description = "The Fruxon SDK is a lightweight Python client for integrating with the Fruxon platform."
 readme = "README.md"
 authors = [
