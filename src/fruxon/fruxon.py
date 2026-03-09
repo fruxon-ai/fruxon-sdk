@@ -120,8 +120,8 @@ def _raise_api_error(error: urllib.error.HTTPError) -> None:
     """Parse an HTTP error response and raise the appropriate exception."""
     try:
         body = json.loads(error.read().decode("utf-8"))
-        title = body.get("title", "Error")
-        detail = body.get("detail", "")
+        title = body.get("title") or body.get("message") or "Error"
+        detail = body.get("detail") or body.get("details") or ""
     except (json.JSONDecodeError, UnicodeDecodeError):
         title = "Error"
         detail = str(error)
